@@ -96,12 +96,12 @@ async function naverGeocode(cfg, address) {
   return { lat, lng };
 }
 
-/** GPS 좌표 → 행정동·구 이름 (지역 검색 키워드용) */
+/** GPS 좌표 → 주소·검색 키워드 (역지오코딩) */
 async function naverReverseGeocode(cfg, lat, lng) {
   const u = new URL("https://naveropenapi.apigw.ntruss.com/map-reversegeocode/v2/gc");
   u.searchParams.set("coords", `${lng},${lat}`);
   u.searchParams.set("sourcecrs", "epsg:4326");
-  u.searchParams.set("orders", "legalcode,admcode,addr,roadaddr");
+  u.searchParams.set("orders", "roadaddr,addr,legalcode,admcode");
   u.searchParams.set("output", "json");
 
   const res = await fetch(u.toString(), {
@@ -112,18 +112,44 @@ async function naverReverseGeocode(cfg, lat, lng) {
   });
   if (!res.ok) return null;
   const j = await res.json();
-  const region = j.results?.[0]?.region;
+  const r = j.results?.[0];
+  const region = r?.region;
   if (!region) return null;
 
+  const area1 = region.area1?.name || "";
   const area2 = region.area2?.name || "";
   const area3 = region.area3?.name || "";
-  const area1 = region.area1?.name || "";
-  const parts = [area2, area3].filter(Boolean);
-  const searchBase = parts.join(" ").trim() || area1;
+  const land = r?.land;
+  const road = land?.name || "";
+  const num = land?.number1 || "";
+  const roadLine = [road, num].filter(Boolean).join(" ").trim();
+
+  /** @type {string[]} */
+  const queryBases = [];
+  if (area2 && area3) queryBases.push(`${area2} ${area3}`);
+  if (area3) queryBases.push(area3);
+  if (roadLine && area2) queryBases.push(`${area2} ${roadLine}`);
+  if (area1 && area2) queryBases.push(`${area1} ${area2}`);
+  const uniqueBases = [...new Set(queryBases.filter(Boolean))];
+  const searchBase = uniqueBases[0] || area1;
   if (!searchBase) return null;
 
-  const label = parts.length ? parts.join(" ") : searchBase;
-  return { searchBase, label };
+  const label = roadLine
+    ? `${roadLine}${area3 ? `, ${area3}` : ""}`
+    : uniqueBases[0] || area1;
+
+  return { searchBase, label, queryBases: uniqueBases };
+}
+
+function buildSearchQueriesFromBases(bases) {
+  const tails = ["맛집", "한식", "카페", "고기", "술집"];
+  const queries = [];
+  for (const base of bases) {
+    for (const t of tails) {
+      queries.push(`${base} ${t}`);
+    }
+  }
+  return [...new Set(queries)];
 }
 
 function buildSearchQueries(region) {
@@ -259,11 +285,15 @@ export async function handleNearby(url, cfg) {
     }
   }
 
+  let searchQueries = null;
   if (!region && useRadius) {
     const rev = await naverReverseGeocode(cfg, qlat, qlng);
     if (rev?.searchBase) {
       region = rev.searchBase;
       regionLabel = `내 위치 주변 · ${rev.label} (${radiusKm}km)`;
+      searchQueries = rev.queryBases?.length
+        ? buildSearchQueriesFromBases(rev.queryBases)
+        : null;
     } else {
       region = "맛집";
       regionLabel = `내 위치 주변 (${radiusKm}km)`;
@@ -272,7 +302,7 @@ export async function handleNearby(url, cfg) {
     regionLabel = `${region} · 내 위치 ${radiusKm}km 이내`;
   }
 
-  const queries = buildSearchQueries(region);
+  const queries = searchQueries || buildSearchQueries(region);
   const { list: places, lastApiError } = await collectPlaces(cfg, queries, origin, {
     display: useRadius ? 10 : 5,
     maxRadiusKm: useRadius ? radiusKm : null,
@@ -282,11 +312,23 @@ export async function handleNearby(url, cfg) {
     ? `${radiusKm}km 이내에서 맛집을 찾지 못했습니다. 다른 동네를 입력해 검색해 보세요.`
     : "네이버에서 업체를 받지 못했습니다. 개발자센터에서 「검색」→「지역 검색」을 켠 Client ID·Secret이 맞는지 확인하세요.";
 
+  const accuracyM = Number(url.searchParams.get("accuracyM"));
+  const accuracyNote =
+    Number.isFinite(accuracyM) && accuracyM > 0
+      ? accuracyM > 500
+        ? `위치 오차가 큽니다(약 ${Math.round(accuracyM)}m). Wi‑Fi/실내에서는 부정확할 수 있어요.`
+        : accuracyM > 80
+          ? `위치 오차 약 ${Math.round(accuracyM)}m`
+          : null
+      : null;
+
   return {
     regionLabel,
     distanceBasis,
     origin,
     radiusKm: useRadius ? radiusKm : null,
+    accuracyM: Number.isFinite(accuracyM) ? accuracyM : null,
+    accuracyNote,
     localSearchError: places.length === 0 ? lastApiError || emptyFallback : null,
     items: places.map((p, i) => ({
       rank: i + 1,

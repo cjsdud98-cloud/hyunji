@@ -1,7 +1,7 @@
 /** @typedef {{ lat: number, lng: number }} LatLng */
 /** @typedef {{ rank?: number, title: string, category?: string, roadAddress?: string, address?: string, link?: string, description?: string, telephone?: string, distanceKm?: number|null }} PlaceRow */
 
-/** @type {LatLng | null} */
+/** @type {(LatLng & { accuracyM?: number }) | null} */
 let userPos = null;
 
 /** 맛집별 댓글 저장 키 접두사 (localStorage) */
@@ -320,8 +320,10 @@ async function runNearbySearch(params) {
     }
 
     renderNaverRanking(data);
-    const label = data.regionLabel ? `${data.regionLabel}` : "";
-    setLocationMessage(label ? `검색 완료 · ${label}` : "검색 완료", false);
+    const parts = [];
+    if (data.regionLabel) parts.push(data.regionLabel);
+    if (data.accuracyNote) parts.push(data.accuracyNote);
+    setLocationMessage(parts.length ? parts.join(" · ") : "검색 완료", false);
   } catch (e) {
     const isLocal =
       location.hostname === "localhost" || location.hostname === "127.0.0.1";
@@ -365,6 +367,9 @@ async function loadNearbyFromGps() {
   params.set("radiusKm", String(GPS_RADIUS_KM));
   params.set("lat", String(userPos.lat));
   params.set("lng", String(userPos.lng));
+  if (userPos.accuracyM != null) {
+    params.set("accuracyM", String(Math.round(userPos.accuracyM)));
+  }
 
   const region = elRegion?.value?.trim();
   if (region) params.set("region", region);
@@ -372,25 +377,90 @@ async function loadNearbyFromGps() {
   await runNearbySearch(params);
 }
 
+/** GPS 고정밀 수집 (여러 번 측정 후 가장 정확한 좌표 선택) */
+function acquireAccuratePosition() {
+  return new Promise((resolve, reject) => {
+    if (!navigator.geolocation) {
+      reject(new Error("NO_GEO"));
+      return;
+    }
+
+    const geoOpts = {
+      enableHighAccuracy: true,
+      maximumAge: 0,
+      timeout: 25000,
+    };
+
+    let best = /** @type {GeolocationPosition | null} */ (null);
+    let watchId = /** @type {number | null} */ (null);
+
+    const finish = (pos) => {
+      if (watchId != null) navigator.geolocation.clearWatch(watchId);
+      resolve(pos);
+    };
+
+    const fail = (err) => {
+      if (watchId != null) navigator.geolocation.clearWatch(watchId);
+      if (best) finish(best);
+      else reject(err);
+    };
+
+    const onReading = (pos) => {
+      const acc = pos.coords.accuracy ?? 99999;
+      if (!best || acc < (best.coords.accuracy ?? 99999)) {
+        best = pos;
+      }
+      setLocationMessage(
+        `GPS 수신 중… (오차 약 ${Math.round(acc)}m${acc <= 50 ? ", 좋음" : ""})`
+      );
+      if (acc <= 35) finish(pos);
+    };
+
+    watchId = navigator.geolocation.watchPosition(onReading, fail, geoOpts);
+
+    setTimeout(() => {
+      if (best) finish(best);
+      else {
+        navigator.geolocation.getCurrentPosition(finish, fail, geoOpts);
+      }
+    }, 12000);
+  });
+}
+
 function requestLocation() {
-  setLocationMessage("내 위치를 가져오는 중…");
+  setLocationMessage("정확한 GPS 위치를 잡는 중… (실외·휴대폰이 더 정확합니다)");
   if (!navigator.geolocation) {
     userPos = null;
     setLocationMessage("이 브라우저는 위치를 지원하지 않습니다. 지역명 검색만 사용할 수 있어요.", true);
     return;
   }
-  navigator.geolocation.getCurrentPosition(
-    (pos) => {
-      userPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-      setLocationMessage(`위치 확인됨. 주변 ${GPS_RADIUS_KM}km 맛집을 찾는 중…`);
+
+  acquireAccuratePosition()
+    .then((pos) => {
+      const acc = pos.coords.accuracy ?? null;
+      userPos = {
+        lat: pos.coords.latitude,
+        lng: pos.coords.longitude,
+        accuracyM: acc ?? undefined,
+      };
+      const accText = acc != null ? ` (오차 약 ${Math.round(acc)}m)` : "";
+      setLocationMessage(`위치 확인${accText}. 주변 ${GPS_RADIUS_KM}km 맛집 검색 중…`);
       loadNearbyFromGps();
-    },
-    () => {
+    })
+    .catch((err) => {
       userPos = null;
-      setLocationMessage("위치 권한이 없습니다. 브라우저 설정에서 위치를 허용해 주세요.", true);
-    },
-    { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 }
-  );
+      if (err?.code === 1 || err?.message === "NO_GEO") {
+        setLocationMessage(
+          "위치 권한이 없습니다. 주소창 자물쇠 → 위치 허용, 또는 휴대폰에서 https로 접속해 주세요.",
+          true
+        );
+      } else {
+        setLocationMessage(
+          "GPS를 가져오지 못했습니다. 잠시 후 다시 시도하거나 지역명을 직접 입력해 주세요.",
+          true
+        );
+      }
+    });
 }
 
 elPlaceBody?.addEventListener("input", () => {
