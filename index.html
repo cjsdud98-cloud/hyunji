@@ -51,12 +51,13 @@
             type="button"
             class="btn-hero btn-hero--outline"
             id="btn-refresh-location"
-            title="내 위치(GPS)를 저장해 거리 정렬에 반영"
+            title="GPS로 내 주변 20km 이내 맛집 검색"
           >
             내 위치
           </button>
         </div>
       </form>
+      <p id="location-status" class="location-status" role="status" aria-live="polite"></p>
 
       <div class="hero-scene" aria-hidden="true">
         <div class="float float--a"></div>
@@ -75,7 +76,7 @@
           <h2 id="rank-heading" class="panel-title">맛집 목록</h2>
           <span class="badge" id="rank-count">0곳</span>
         </div>
-        <p class="panel-hint">행을 누르면 상세·댓글을 볼 수 있어요.</p>
+        <p class="panel-hint">행을 누르면 상세·댓글을 볼 수 있어요. 「내 위치」는 주변 20km 이내 맛집을 보여 줍니다.</p>
         <ol class="rank-list" id="rank-list"></ol>
       </section>
     </main>

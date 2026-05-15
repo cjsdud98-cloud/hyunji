@@ -2,6 +2,9 @@
  * 네이버 지역 검색·지오코딩 (Node / Cloudflare Pages Functions 공용)
  */
 
+/** GPS 「내 위치」 검색 시 최대 반경(km) */
+export const GPS_RADIUS_KM = 20;
+
 export function readNaverConfig(options = {}) {
   const { env, readConfigFile } = options;
 
@@ -48,10 +51,10 @@ function distanceKm(a, b) {
   return 2 * R * Math.asin(Math.sqrt(x));
 }
 
-async function naverLocalSearch(cfg, query) {
+async function naverLocalSearch(cfg, query, display = 5) {
   const u = new URL("https://openapi.naver.com/v1/search/local.json");
   u.searchParams.set("query", query);
-  u.searchParams.set("display", "5");
+  u.searchParams.set("display", String(Math.min(10, Math.max(1, display))));
   u.searchParams.set("start", "1");
   u.searchParams.set("sort", "comment");
 
@@ -93,18 +96,48 @@ async function naverGeocode(cfg, address) {
   return { lat, lng };
 }
 
+/** GPS 좌표 → 행정동·구 이름 (지역 검색 키워드용) */
+async function naverReverseGeocode(cfg, lat, lng) {
+  const u = new URL("https://naveropenapi.apigw.ntruss.com/map-reversegeocode/v2/gc");
+  u.searchParams.set("coords", `${lng},${lat}`);
+  u.searchParams.set("sourcecrs", "epsg:4326");
+  u.searchParams.set("orders", "legalcode,admcode,addr,roadaddr");
+  u.searchParams.set("output", "json");
+
+  const res = await fetch(u.toString(), {
+    headers: {
+      "X-NCP-APIGW-API-KEY-ID": cfg.clientId,
+      "X-NCP-APIGW-API-KEY": cfg.clientSecret,
+    },
+  });
+  if (!res.ok) return null;
+  const j = await res.json();
+  const region = j.results?.[0]?.region;
+  if (!region) return null;
+
+  const area2 = region.area2?.name || "";
+  const area3 = region.area3?.name || "";
+  const area1 = region.area1?.name || "";
+  const parts = [area2, area3].filter(Boolean);
+  const searchBase = parts.join(" ").trim() || area1;
+  if (!searchBase) return null;
+
+  const label = parts.length ? parts.join(" ") : searchBase;
+  return { searchBase, label };
+}
+
 function buildSearchQueries(region) {
   const base = region.trim();
   const tails = ["맛집", "한식", "카페", "고기", "술집"];
   return tails.map((t) => `${base} ${t}`);
 }
 
-async function collectPlaces(cfg, queries, origin) {
+async function collectPlaces(cfg, queries, origin, { display = 5, maxRadiusKm = null } = {}) {
   const map = new Map();
   let lastHttpError = null;
 
   for (const q of queries) {
-    const { ok, status, json } = await naverLocalSearch(cfg, q);
+    const { ok, status, json } = await naverLocalSearch(cfg, q, display);
     if (!ok) {
       lastHttpError =
         json?.errorMessage ||
@@ -149,29 +182,52 @@ async function collectPlaces(cfg, queries, origin) {
     else p.distanceKm = null;
   }
 
-  list.sort((a, b) => {
+  let filtered = list;
+  if (maxRadiusKm != null && Number.isFinite(maxRadiusKm)) {
+    filtered = list.filter((p) => p.distanceKm != null && p.distanceKm <= maxRadiusKm);
+  }
+
+  filtered.sort((a, b) => {
     const da = a.distanceKm ?? 1e9;
     const db = b.distanceKm ?? 1e9;
     return da - db;
   });
 
-  return { list, lastApiError: list.length === 0 ? lastHttpError : null };
+  const lastApiError =
+    filtered.length === 0
+      ? maxRadiusKm != null
+        ? lastHttpError || `${maxRadiusKm}km 이내 맛집을 찾지 못했습니다.`
+        : lastHttpError
+      : null;
+
+  return { list: filtered, lastApiError };
 }
 
 /** @param {URL} url @param {{ clientId: string, clientSecret: string } | null} cfg */
 export async function handleNearby(url, cfg) {
-  const region = (url.searchParams.get("region") || "").trim();
-  if (!region) {
-    throw new Error("검색 지역이 비어 있습니다.");
-  }
-
+  let region = (url.searchParams.get("region") || "").trim();
   const qlat = Number(url.searchParams.get("lat"));
   const qlng = Number(url.searchParams.get("lng"));
   const hasGps = Number.isFinite(qlat) && Number.isFinite(qlng);
 
+  const gpsSearch =
+    url.searchParams.get("gpsSearch") === "1" || url.searchParams.get("gpsSearch") === "true";
+  let radiusKm = Number(url.searchParams.get("radiusKm"));
+  if (gpsSearch && hasGps && !Number.isFinite(radiusKm)) {
+    radiusKm = GPS_RADIUS_KM;
+  }
+  const useRadius = hasGps && Number.isFinite(radiusKm) && radiusKm > 0;
+
+  if (!region && !useRadius) {
+    throw new Error("검색 지역이 비어 있습니다.");
+  }
+  if (useRadius && !hasGps) {
+    throw new Error("GPS 좌표가 필요합니다.");
+  }
+
   if (!cfg) {
     return {
-      regionLabel: region,
+      regionLabel: region || "내 위치",
       distanceBasis: "default_center",
       origin: { lat: 37.497952, lng: 127.027619 },
       localSearchError:
@@ -187,9 +243,11 @@ export async function handleNearby(url, cfg) {
 
   let origin;
   let distanceBasis;
+  let regionLabel = region;
+
   if (hasGps) {
     origin = { lat: qlat, lng: qlng };
-    distanceBasis = "gps";
+    distanceBasis = useRadius ? "gps_radius" : "gps";
   } else {
     const g = await naverGeocode(cfg, region);
     if (g) {
@@ -201,16 +259,34 @@ export async function handleNearby(url, cfg) {
     }
   }
 
-  const queries = buildSearchQueries(region);
-  const { list: places, lastApiError } = await collectPlaces(cfg, queries, origin);
+  if (!region && useRadius) {
+    const rev = await naverReverseGeocode(cfg, qlat, qlng);
+    if (rev?.searchBase) {
+      region = rev.searchBase;
+      regionLabel = `내 위치 주변 · ${rev.label} (${radiusKm}km)`;
+    } else {
+      region = "맛집";
+      regionLabel = `내 위치 주변 (${radiusKm}km)`;
+    }
+  } else if (useRadius && region) {
+    regionLabel = `${region} · 내 위치 ${radiusKm}km 이내`;
+  }
 
-  const emptyFallback =
-    "네이버에서 업체를 받지 못했습니다. 개발자센터에서 「검색」→「지역 검색」을 켠 Client ID·Secret이 맞는지 확인하세요.";
+  const queries = buildSearchQueries(region);
+  const { list: places, lastApiError } = await collectPlaces(cfg, queries, origin, {
+    display: useRadius ? 10 : 5,
+    maxRadiusKm: useRadius ? radiusKm : null,
+  });
+
+  const emptyFallback = useRadius
+    ? `${radiusKm}km 이내에서 맛집을 찾지 못했습니다. 다른 동네를 입력해 검색해 보세요.`
+    : "네이버에서 업체를 받지 못했습니다. 개발자센터에서 「검색」→「지역 검색」을 켠 Client ID·Secret이 맞는지 확인하세요.";
 
   return {
-    regionLabel: region,
+    regionLabel,
     distanceBasis,
     origin,
+    radiusKm: useRadius ? radiusKm : null,
     localSearchError: places.length === 0 ? lastApiError || emptyFallback : null,
     items: places.map((p, i) => ({
       rank: i + 1,

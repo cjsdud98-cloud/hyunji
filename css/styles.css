@@ -792,6 +792,20 @@ body {
   font-weight: 700;
 }
 
+.location-status {
+  margin: 0.75rem auto 0;
+  max-width: 480px;
+  min-height: 1.25rem;
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--ink-soft);
+  text-align: center;
+}
+
+.location-status--error {
+  color: #d94848;
+}
+
 .hero--compact {
   padding-bottom: clamp(4rem, 12vw, 6rem);
 }

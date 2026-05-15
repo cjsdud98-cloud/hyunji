@@ -25,8 +25,15 @@ const elPlaceNickname = document.getElementById("place-nickname");
 const elPlaceBody = document.getElementById("place-comment-body");
 const elPlaceCommentList = document.getElementById("place-comment-list");
 const elPlaceCharLeft = document.getElementById("place-char-left");
+const elLocationStatus = document.getElementById("location-status");
 
-function setLocationMessage(_text, _isError = false) {}
+const GPS_RADIUS_KM = 20;
+
+function setLocationMessage(text, isError = false) {
+  if (!elLocationStatus) return;
+  elLocationStatus.textContent = text || "";
+  elLocationStatus.classList.toggle("location-status--error", Boolean(isError && text));
+}
 
 function formatKm(km) {
   if (km == null || Number.isNaN(km)) return "거리 미상";
@@ -64,6 +71,7 @@ function showRankingPlaceholder(message, isError = false) {
 }
 
 function distanceBasisLabel(basis) {
+  if (basis === "gps_radius") return `내 위치 · ${GPS_RADIUS_KM}km 이내`;
   if (basis === "gps") return "내 위치 기준";
   if (basis === "region_geocode") return "검색 지역 중심";
   return "기본 좌표 기준";
@@ -265,44 +273,42 @@ function renderNaverRanking(data) {
   });
 }
 
-async function loadRankingFromNaver() {
-  const region = elRegion?.value?.trim() || "";
-  if (!region) {
-    setLocationMessage("검색할 지역을 입력한 뒤 「맛집 검색」을 눌러 주세요.", true);
-    showRankingPlaceholder("지역 입력란이 비어 있습니다. 동·역·구 등 검색할 곳을 적어 주세요.");
-    return;
+async function fetchNearby(params) {
+  const res = await fetch(`/api/nearby?${params.toString()}`);
+  const raw = await res.text();
+  let data;
+  try {
+    data = raw ? JSON.parse(raw) : {};
+  } catch {
+    const isLocal =
+      location.hostname === "localhost" || location.hostname === "127.0.0.1";
+    throw new Error(
+      isLocal
+        ? "API 응답이 JSON이 아닙니다. 터미널에서 node server.mjs 를 실행했는지 확인하세요."
+        : "API(/api/nearby)가 동작하지 않습니다. Cloudflare Pages Functions 배포와 환경 변수를 확인하세요."
+    );
   }
+  return { res, data };
+}
 
+function showSearchLoading(message = "네이버 지역 검색 중…") {
   elRankCount.textContent = "…";
   elRankList.innerHTML = "";
   const loading = document.createElement("p");
   loading.className = "empty-state";
-  loading.textContent = "네이버 지역 검색 중…";
+  loading.textContent = message;
   elRankList.appendChild(loading);
+}
 
-  const params = new URLSearchParams();
-  params.set("region", region);
-  if (userPos) {
-    params.set("lat", String(userPos.lat));
-    params.set("lng", String(userPos.lng));
-  }
+async function runNearbySearch(params) {
+  showSearchLoading(
+    params.get("gpsSearch") === "1"
+      ? `내 주변 ${GPS_RADIUS_KM}km 이내 맛집 검색 중…`
+      : "네이버 지역 검색 중…"
+  );
 
   try {
-    const res = await fetch(`/api/nearby?${params.toString()}`);
-    const raw = await res.text();
-    let data;
-    try {
-      data = raw ? JSON.parse(raw) : {};
-    } catch {
-      const isLocal =
-        location.hostname === "localhost" || location.hostname === "127.0.0.1";
-      throw new Error(
-        isLocal
-          ? "API 응답이 JSON이 아닙니다. 터미널에서 node server.mjs 를 실행했는지 확인하세요."
-          : "API(/api/nearby)가 동작하지 않습니다. Cloudflare Pages Functions 배포와 환경 변수(NAVER_CLIENT_ID, NAVER_CLIENT_SECRET)를 확인하세요."
-      );
-    }
-
+    const { res, data } = await fetchNearby(params);
     if (res.status === 400) {
       throw new Error(data.message || "검색할 지역을 입력해 주세요.");
     }
@@ -314,7 +320,8 @@ async function loadRankingFromNaver() {
     }
 
     renderNaverRanking(data);
-    setLocationMessage("", false);
+    const label = data.regionLabel ? `${data.regionLabel}` : "";
+    setLocationMessage(label ? `검색 완료 · ${label}` : "검색 완료", false);
   } catch (e) {
     const isLocal =
       location.hostname === "localhost" || location.hostname === "127.0.0.1";
@@ -329,6 +336,42 @@ async function loadRankingFromNaver() {
   }
 }
 
+async function loadRankingFromNaver() {
+  const region = elRegion?.value?.trim() || "";
+  if (!region) {
+    setLocationMessage("검색할 지역을 입력한 뒤 「맛집 검색」을 눌러 주세요.", true);
+    showRankingPlaceholder("지역 입력란이 비어 있습니다. 동·역·구 등 검색할 곳을 적어 주세요.");
+    return;
+  }
+
+  const params = new URLSearchParams();
+  params.set("region", region);
+  if (userPos) {
+    params.set("lat", String(userPos.lat));
+    params.set("lng", String(userPos.lng));
+  }
+
+  await runNearbySearch(params);
+}
+
+async function loadNearbyFromGps() {
+  if (!userPos) {
+    setLocationMessage("먼저 「내 위치」로 GPS를 허용해 주세요.", true);
+    return;
+  }
+
+  const params = new URLSearchParams();
+  params.set("gpsSearch", "1");
+  params.set("radiusKm", String(GPS_RADIUS_KM));
+  params.set("lat", String(userPos.lat));
+  params.set("lng", String(userPos.lng));
+
+  const region = elRegion?.value?.trim();
+  if (region) params.set("region", region);
+
+  await runNearbySearch(params);
+}
+
 function requestLocation() {
   setLocationMessage("내 위치를 가져오는 중…");
   if (!navigator.geolocation) {
@@ -339,17 +382,12 @@ function requestLocation() {
   navigator.geolocation.getCurrentPosition(
     (pos) => {
       userPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-      const region = elRegion?.value?.trim();
-      if (region) {
-        setLocationMessage("내 위치를 받았습니다. 거리 반영을 위해 다시 검색합니다…");
-        loadRankingFromNaver();
-      } else {
-        setLocationMessage("내 위치를 저장했습니다. 지역을 입력하고 「맛집 검색」하면 거리에 반영됩니다.");
-      }
+      setLocationMessage(`위치 확인됨. 주변 ${GPS_RADIUS_KM}km 맛집을 찾는 중…`);
+      loadNearbyFromGps();
     },
     () => {
       userPos = null;
-      setLocationMessage("위치 권한이 없습니다. 지역명만으로 검색할 수 있어요.", true);
+      setLocationMessage("위치 권한이 없습니다. 브라우저 설정에서 위치를 허용해 주세요.", true);
     },
     { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 }
   );
@@ -399,4 +437,6 @@ elRegionForm?.addEventListener("submit", (e) => {
   loadRankingFromNaver();
 });
 
-showRankingPlaceholder("위에 지역을 입력하고 「맛집 검색」을 누르면 네이버 지역 검색 결과가 여기에 표시됩니다.");
+showRankingPlaceholder(
+  "지역을 입력하고 「맛집 검색」을 누르거나, 「내 위치」를 눌러 주변 20km 이내 맛집을 찾아 보세요."
+);

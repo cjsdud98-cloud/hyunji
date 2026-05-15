@@ -4,12 +4,17 @@ import { readNaverConfig, handleNearby } from "../_shared/nearby-api.mjs";
 export async function onRequestGet(context) {
   const url = new URL(context.request.url);
   const region = (url.searchParams.get("region") || "").trim();
+  const lat = Number(url.searchParams.get("lat"));
+  const lng = Number(url.searchParams.get("lng"));
+  const hasGps = Number.isFinite(lat) && Number.isFinite(lng);
+  const gpsSearch =
+    url.searchParams.get("gpsSearch") === "1" || url.searchParams.get("gpsSearch") === "true";
 
-  if (!region) {
+  if (!region && !(hasGps && gpsSearch)) {
     return Response.json(
       {
         error: "MISSING_REGION",
-        message: "검색할 지역을 입력해 주세요.",
+        message: "검색할 지역을 입력하거나 「내 위치」를 눌러 주세요.",
         items: [],
       },
       { status: 400, headers: { "Cache-Control": "no-store" } }

@@ -70,10 +70,15 @@ const server = http.createServer(async (req, res) => {
 
     if (url.pathname === "/api/nearby" && req.method === "GET") {
       const region = (url.searchParams.get("region") || "").trim();
-      if (!region) {
+      const lat = Number(url.searchParams.get("lat"));
+      const lng = Number(url.searchParams.get("lng"));
+      const hasGps = Number.isFinite(lat) && Number.isFinite(lng);
+      const gpsSearch =
+        url.searchParams.get("gpsSearch") === "1" || url.searchParams.get("gpsSearch") === "true";
+      if (!region && !(hasGps && gpsSearch)) {
         sendJson(res, 400, {
           error: "MISSING_REGION",
-          message: "검색할 지역을 입력해 주세요.",
+          message: "검색할 지역을 입력하거나 「내 위치」를 눌러 주세요.",
           items: [],
         });
         return;
