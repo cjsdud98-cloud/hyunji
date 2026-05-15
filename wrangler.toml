@@ -1,5 +1,0 @@
-# Cloudflare Pages — [build] 섹션은 Pages에서 지원하지 않음
-# 빌드 명령은 대시보드 Build settings에서 설정 (비우거나: npm run build)
-name = "hyunji"
-compatibility_date = "2024-11-01"
-pages_build_output_dir = "."
