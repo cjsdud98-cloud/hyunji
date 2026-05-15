@@ -1,2 +1,6 @@
 # 네이버 API 키(클라이언트 시크릿) — 절대 커밋하지 마세요
 naver-config.json
+
+# Wrangler / Cloudflare 로컬
+.wrangler/
+.dev.vars
