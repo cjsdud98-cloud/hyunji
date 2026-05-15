@@ -12,21 +12,21 @@
     />
     <link rel="stylesheet" href="css/styles.css" />
   </head>
-  <body>
+  <body class="page-home">
     <div class="page-gradient" aria-hidden="true"></div>
 
     <nav class="top-nav" aria-label="주요 메뉴">
-      <a class="nav-logo" href="#" id="nav-home">현지인 맛집</a>
+      <a class="nav-logo" href="index.html">현지인 맛집</a>
       <div class="nav-links">
-        <a href="#about" class="nav-link">서비스 소개</a>
-        <a href="#" class="nav-link">공지</a>
-        <a href="#contact" class="nav-link">문의</a>
-        <a href="#faq" class="nav-link">FAQ</a>
+        <a href="about.html" class="nav-link">서비스 소개</a>
+        <a href="notice.html" class="nav-link">공지</a>
+        <a href="contact.html" class="nav-link">문의</a>
+        <a href="faq.html" class="nav-link">FAQ</a>
         <span class="nav-lang" aria-hidden="true">KOR</span>
       </div>
     </nav>
 
-    <header class="hero">
+    <header class="hero hero--compact">
       <h1 class="hero-title">
         <span class="hero-title-line">동네 사람들이 찾는</span>
         <span class="hero-title-line">진짜 맛집을 만나 보세요</span>
@@ -69,7 +69,7 @@
       </div>
     </header>
 
-    <main class="main-stack">
+    <main class="main-stack main-stack--home">
       <section class="glass-panel ranking-panel" aria-labelledby="rank-heading">
         <div class="panel-head">
           <h2 id="rank-heading" class="panel-title">맛집 목록</h2>
@@ -78,122 +78,8 @@
         <p class="panel-hint">행을 누르면 상세·댓글을 볼 수 있어요.</p>
         <ol class="rank-list" id="rank-list"></ol>
       </section>
-
-      <section id="about" class="glass-panel info-panel" aria-labelledby="about-heading">
-        <h2 id="about-heading" class="panel-title">서비스 소개</h2>
-        <p class="info-lead">
-          <strong>현지인 맛집</strong>은 광고 순위가 아닌, <em>지역·거리</em>를 기준으로 동네 맛집을 찾아 주는
-          가벼운 검색 서비스입니다. 네이버 지역 검색 데이터를 바탕으로 후보를 모아 보여 드립니다.
-        </p>
-
-        <div class="feature-grid">
-          <article class="feature-card">
-            <span class="feature-icon" aria-hidden="true">📍</span>
-            <h3 class="feature-title">지역 중심 검색</h3>
-            <p class="feature-text">연남동, 강남역처럼 가고 싶은 동네를 입력하면 그 주변 맛집 후보를 모읍니다.</p>
-          </article>
-          <article class="feature-card">
-            <span class="feature-icon" aria-hidden="true">📏</span>
-            <h3 class="feature-title">거리 반영 정렬</h3>
-            <p class="feature-text">
-              「내 위치」로 GPS를 허용하면 내 위치 기준으로, 아니면 검색한 지역 중심으로 가까운 순으로 정렬합니다.
-            </p>
-          </article>
-          <article class="feature-card">
-            <span class="feature-icon" aria-hidden="true">💬</span>
-            <h3 class="feature-title">가게별 메모·댓글</h3>
-            <p class="feature-text">
-              목록에서 가게를 누르면 상세 정보와 함께 짧은 후기·팁을 남길 수 있습니다. 이 기기에만 저장됩니다.
-            </p>
-          </article>
-        </div>
-
-        <h3 class="info-subtitle">이렇게 사용해 보세요</h3>
-        <ol class="steps-list">
-          <li>검색창에 가고 싶은 <strong>동·역·구</strong> 이름을 입력합니다.</li>
-          <li>필요하면 <strong>내 위치</strong>를 눌러 GPS를 허용한 뒤, <strong>맛집 검색</strong>을 누릅니다.</li>
-          <li>목록에서 맛집을 선택해 주소·전화·네이버 링크와 댓글을 확인합니다.</li>
-        </ol>
-        <p class="info-note">
-          검색 결과는 네이버 지역 검색 API를 통해 제공되며, 영업 시간·메뉴·가격 등은 각 업체·네이버 페이지에서
-          최종 확인해 주세요.
-        </p>
-      </section>
-
-      <section id="faq" class="glass-panel info-panel" aria-labelledby="faq-heading">
-        <h2 id="faq-heading" class="panel-title">FAQ</h2>
-        <p class="info-lead">
-          자주 묻는 질문입니다. 더 궁금한 점은
-          <a href="mailto:cjsdud98@naver.com" class="info-link">cjsdud98@naver.com</a>으로 문의해 주세요.
-        </p>
-
-        <div class="faq-list">
-          <details class="faq-item">
-            <summary class="faq-question">현지인 맛집은 무료인가요?</summary>
-            <p class="faq-answer">
-              네, 별도 가입 없이 지역 검색·목록 보기·기기 내 댓글 저장 기능을 무료로 이용할 수 있습니다. 데이터
-              통신 요금은 이용 중인 이동통신사·인터넷 요금제에 따릅니다.
-            </p>
-          </details>
-          <details class="faq-item">
-            <summary class="faq-question">어떤 기준으로 맛집이 정렬되나요?</summary>
-            <p class="faq-answer">
-              여러 키워드(맛집, 한식, 카페 등)로 네이버 지역 검색을 조회한 뒤 중복을 제거하고, GPS를 쓰면
-              <strong>내 위치</strong>에서 가까운 순, GPS가 없으면 <strong>입력한 지역</strong> 중심에서 가까운
-              순으로 보여 드립니다. 네이버 API 특성상 완벽한 “현지인만 아는” 순위가 아닐 수 있습니다.
-            </p>
-          </details>
-          <details class="faq-item">
-            <summary class="faq-question">「내 위치」는 꼭 켜야 하나요?</summary>
-            <p class="faq-answer">
-              아니요. 위치를 허용하지 않아도 지역명만으로 검색할 수 있습니다. 이 경우 거리는 검색한 동네
-              중심 좌표를 기준으로 계산됩니다.
-            </p>
-          </details>
-          <details class="faq-item">
-            <summary class="faq-question">댓글은 다른 사람도 볼 수 있나요?</summary>
-            <p class="faq-answer">
-              아니요. 댓글은 브라우저 <strong>localStorage</strong>에만 저장되며, 같은 기기·같은 브라우저에서만
-              다시 볼 수 있습니다. 서버에 업로드되지 않습니다.
-            </p>
-          </details>
-          <details class="faq-item">
-            <summary class="faq-question">목록이 비어 있거나 오류가 나요.</summary>
-            <p class="faq-answer">
-              지역명을 다시 입력해 보세요. 배포 사이트에서는 Cloudflare 환경 변수
-              <code>NAVER_CLIENT_ID</code>, <code>NAVER_CLIENT_SECRET</code>이 설정되어 있어야 합니다. 로컬에서는
-              <code>naver-config.json</code>과 <code>node server.mjs</code> 실행이 필요합니다. 네이버 개발자센터에서
-              「지역 검색」 API가 활성화되어 있는지도 확인해 주세요.
-            </p>
-          </details>
-          <details class="faq-item">
-            <summary class="faq-question">개인정보·위치 정보는 어떻게 처리되나요?</summary>
-            <p class="faq-answer">
-              「내 위치」 사용 시 좌표는 검색 요청 시 서버(또는 API)로 전달되어 거리 계산에만 쓰이며, 별도
-              회원 DB에 저장하지 않습니다. 댓글·닉네임은 사용자 기기에만 보관됩니다.
-            </p>
-          </details>
-        </div>
-      </section>
-
-      <section id="contact" class="glass-panel info-panel" aria-labelledby="contact-heading">
-        <h2 id="contact-heading" class="panel-title">문의</h2>
-        <p class="info-lead">
-          서비스 이용 중 오류, 제휴·기능 제안, 삭제 요청 등은 아래 이메일로 보내 주세요. 영업일 기준 1~3일 안에
-          답변 드리겠습니다.
-        </p>
-        <p class="contact-email-wrap">
-          <a href="mailto:cjsdud98@naver.com" class="contact-email">cjsdud98@naver.com</a>
-        </p>
-        <ul class="contact-notes">
-          <li>메일 제목에 <strong>「현지인 맛집」</strong>을 적어 주시면 확인이 빠릅니다.</li>
-          <li>오류 문의 시 사용하신 지역명·브라우저(Chrome, Safari 등)를 함께 적어 주세요.</li>
-          <li>댓글·검색 기록은 서버에 저장되지 않으므로, 화면 캡처를 첨부해 주시면 도움이 됩니다.</li>
-        </ul>
-      </section>
     </main>
 
-    <!-- 맛집 상세 + 가게별 댓글 (모달) -->
     <div id="place-detail-root" class="place-detail-root" hidden>
       <div class="place-detail-backdrop" id="place-detail-backdrop" aria-hidden="true"></div>
       <div
@@ -235,8 +121,14 @@
       </div>
     </div>
 
-    <footer class="site-footer">
+    <footer class="site-footer site-footer--home">
       <small>© 현지인 맛집</small>
+      <nav class="footer-nav" aria-label="바로가기">
+        <a href="about.html" class="footer-link">서비스 소개</a>
+        <a href="notice.html" class="footer-link">공지</a>
+        <a href="contact.html" class="footer-link">문의</a>
+        <a href="faq.html" class="footer-link">FAQ</a>
+      </nav>
     </footer>
 
     <script src="js/data.js"></script>
