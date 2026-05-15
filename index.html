@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>현지인 맛집 — 지역 기반 맛집 찾기</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="css/styles.css" />
+  </head>
+  <body>
+    <div class="page-gradient" aria-hidden="true"></div>
+
+    <nav class="top-nav" aria-label="주요 메뉴">
+      <a class="nav-logo" href="#">현지인 맛집</a>
+      <div class="nav-links">
+        <a href="#" class="nav-link">서비스 소개</a>
+        <a href="#" class="nav-link">공지</a>
+        <a href="#" class="nav-link">문의</a>
+        <a href="#" class="nav-link">FAQ</a>
+        <span class="nav-lang" aria-hidden="true">KOR</span>
+      </div>
+    </nav>
+
+    <header class="hero">
+      <h1 class="hero-title">
+        <span class="hero-title-line">동네 사람들이 찾는</span>
+        <span class="hero-title-line">진짜 맛집을 만나 보세요</span>
+      </h1>
+
+      <h2 id="loc-heading" class="sr-only">지역으로 맛집 찾기</h2>
+      <form id="region-search-form" class="hero-cta" novalidate>
+        <label for="region-query" class="sr-only">검색할 지역 (필수)</label>
+        <input
+          type="text"
+          id="region-query"
+          name="region"
+          maxlength="48"
+          required
+          class="hero-input"
+          placeholder="어느 동네 맛집을 찾을까요? (예: 연남동, 강남역)"
+          autocomplete="address-level3"
+        />
+        <div class="hero-cta-buttons">
+          <button type="submit" class="btn-hero btn-hero--dark" id="btn-search-food">맛집 검색</button>
+          <button
+            type="button"
+            class="btn-hero btn-hero--outline"
+            id="btn-refresh-location"
+            title="내 위치(GPS)를 저장해 거리 정렬에 반영"
+          >
+            내 위치
+          </button>
+        </div>
+      </form>
+
+      <div class="hero-scene" aria-hidden="true">
+        <div class="float float--a"></div>
+        <div class="float float--b"></div>
+        <div class="float float--c"></div>
+        <div class="float float--d"></div>
+        <div class="float-icon float-icon--pin" title="">📍</div>
+        <div class="float-icon float-icon--bowl" title="">🍜</div>
+        <div class="float-icon float-icon--map" title="">🗺️</div>
+      </div>
+    </header>
+
+    <main class="main-stack">
+      <section class="glass-panel ranking-panel" aria-labelledby="rank-heading">
+        <div class="panel-head">
+          <h2 id="rank-heading" class="panel-title">맛집 목록</h2>
+          <span class="badge" id="rank-count">0곳</span>
+        </div>
+        <p class="panel-hint">행을 누르면 상세·댓글을 볼 수 있어요.</p>
+        <ol class="rank-list" id="rank-list"></ol>
+      </section>
+    </main>
+
+    <!-- 맛집 상세 + 가게별 댓글 (모달) -->
+    <div id="place-detail-root" class="place-detail-root" hidden>
+      <div class="place-detail-backdrop" id="place-detail-backdrop" aria-hidden="true"></div>
+      <div
+        class="place-detail-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="place-detail-title"
+        tabindex="-1"
+      >
+        <button type="button" class="place-detail-close" id="place-detail-close" aria-label="닫기">×</button>
+        <div id="place-detail-info" class="place-detail-info"></div>
+        <section class="place-detail-comments" aria-labelledby="place-detail-comments-heading">
+          <h3 id="place-detail-comments-heading" class="place-detail-comments-title">댓글</h3>
+          <p class="place-detail-comments-lead">이 기기(localStorage)에만 저장됩니다 · 익명 가능</p>
+          <form class="comment-form" id="place-comment-form">
+            <label class="sr-only" for="place-nickname">닉네임 (선택)</label>
+            <input
+              type="text"
+              id="place-nickname"
+              maxlength="24"
+              placeholder="닉네임 (선택, 비우면 익명)"
+              autocomplete="nickname"
+            />
+            <label class="sr-only" for="place-comment-body">댓글</label>
+            <textarea
+              id="place-comment-body"
+              rows="3"
+              maxlength="500"
+              required
+              placeholder="맛집 후기·팁을 남겨 주세요…"
+            ></textarea>
+            <div class="form-actions">
+              <span class="char-count"><span id="place-char-left">500</span>자 남음</span>
+              <button type="submit" class="btn-hero btn-hero--dark btn-hero--sm">등록</button>
+            </div>
+          </form>
+          <ul class="comment-list" id="place-comment-list"></ul>
+        </section>
+      </div>
+    </div>
+
+    <footer class="site-footer">
+      <small>© 현지인 맛집</small>
+    </footer>
+
+    <script src="js/data.js"></script>
+    <script src="js/app.js"></script>
+  </body>
+</html>
