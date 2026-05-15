@@ -768,8 +768,54 @@ body {
 }
 
 #about,
-#faq {
+#faq,
+#contact {
   scroll-margin-top: calc(var(--nav-h) + 1rem);
+}
+
+.info-link {
+  color: var(--blue);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.info-link:hover {
+  text-decoration: underline;
+}
+
+.contact-email-wrap {
+  margin: 0 0 1rem;
+  text-align: center;
+}
+
+.contact-email {
+  display: inline-block;
+  padding: 0.75rem 1.25rem;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--blue);
+  text-decoration: none;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(49, 130, 246, 0.35);
+  background: var(--blue-soft);
+  transition: background 0.15s ease, box-shadow 0.15s ease;
+}
+
+.contact-email:hover {
+  background: #dceeff;
+  box-shadow: var(--shadow-sm);
+}
+
+.contact-notes {
+  margin: 0;
+  padding-left: 1.15rem;
+  font-size: 0.84rem;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.contact-notes li + li {
+  margin-top: 0.4rem;
 }
 
 .site-footer {
