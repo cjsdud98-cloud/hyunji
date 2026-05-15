@@ -1,4 +1,4 @@
-import { readNaverConfig, handleNearby } from "../../lib/nearby-api.mjs";
+import { readNaverConfig, handleNearby } from "../_shared/nearby-api.mjs";
 
 /** Cloudflare Pages Function → GET /api/nearby */
 export async function onRequestGet(context) {
@@ -19,8 +19,21 @@ export async function onRequestGet(context) {
   try {
     const cfg = readNaverConfig({ env: context.env });
     const payload = await handleNearby(url, cfg);
-    return Response.json(payload, { headers: { "Cache-Control": "no-store" } });
+    return Response.json(payload, {
+      headers: {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json; charset=utf-8",
+      },
+    });
   } catch (e) {
-    return Response.json({ error: String(e?.message || e) }, { status: 500 });
+    const message = String(e?.message || e);
+    return Response.json(
+      {
+        error: message,
+        localSearchError: message,
+        items: [],
+      },
+      { status: 500, headers: { "Cache-Control": "no-store" } }
+    );
   }
 }

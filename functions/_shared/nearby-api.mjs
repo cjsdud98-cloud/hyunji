@@ -1,13 +1,13 @@
 /**
- * 네이버 지역 검색·지오코딩 공통 로직 (Node 서버 / Cloudflare Pages Functions)
+ * 네이버 지역 검색·지오코딩 (Node / Cloudflare Pages Functions 공용)
  */
 
 export function readNaverConfig(options = {}) {
   const { env, readConfigFile } = options;
 
   if (env) {
-    const clientId = String(env.NAVER_CLIENT_ID || "").trim();
-    const clientSecret = String(env.NAVER_CLIENT_SECRET || "").trim();
+    const clientId = String(env.NAVER_CLIENT_ID || env.naverClientId || "").trim();
+    const clientSecret = String(env.NAVER_CLIENT_SECRET || env.naverClientSecret || "").trim();
     if (clientId && clientSecret) return { clientId, clientSecret };
   }
 
@@ -175,7 +175,11 @@ export async function handleNearby(url, cfg) {
       distanceBasis: "default_center",
       origin: { lat: 37.497952, lng: 127.027619 },
       localSearchError:
-        "네이버 API 키가 설정되지 않았습니다. Cloudflare Pages → Settings → Environment variables에 NAVER_CLIENT_ID, NAVER_CLIENT_SECRET을 등록한 뒤 재배포해 주세요.",
+        "네이버 API 키가 없습니다.\n\n" +
+        "【Cloudflare 배포】 Pages → Settings → Environment variables (Production)\n" +
+        "· NAVER_CLIENT_ID\n· NAVER_CLIENT_SECRET\n" +
+        "저장 후 Deployments에서 재배포하세요.\n\n" +
+        "【로컬 개발】 naver-config.json 에 Client ID·Secret 입력 후 node server.mjs",
       items: [],
       setupRequired: true,
     };
@@ -201,7 +205,7 @@ export async function handleNearby(url, cfg) {
   const { list: places, lastApiError } = await collectPlaces(cfg, queries, origin);
 
   const emptyFallback =
-    "네이버에서 업체 목록을 받지 못했습니다. 개발자센터에서 「지역 검색」을 켠 뒤 Client ID·Secret을 환경 변수에 넣어 주세요.";
+    "네이버에서 업체를 받지 못했습니다. 개발자센터에서 「검색」→「지역 검색」을 켠 Client ID·Secret이 맞는지 확인하세요.";
 
   return {
     regionLabel: region,

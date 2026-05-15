@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "start": "node server.mjs",
-    "build": "node --check server.mjs && node --check lib/nearby-api.mjs",
+    "build": "node --check server.mjs && node --check functions/_shared/nearby-api.mjs",
     "pages:dev": "wrangler pages dev ."
   },
   "engines": {

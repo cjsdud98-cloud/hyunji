@@ -208,9 +208,13 @@ function renderNaverRanking(data) {
   elRankList.innerHTML = "";
 
   if (items.length === 0) {
+    const isLocal =
+      location.hostname === "localhost" || location.hostname === "127.0.0.1";
     const hint = data.localSearchError
       ? String(data.localSearchError)
-      : "원인을 알 수 없습니다. 서버 터미널과 naver-config.json을 확인해 주세요.";
+      : isLocal
+        ? "로컬: naver-config.json 에 네이버 Client ID·Secret 을 넣고 node server.mjs 를 실행했는지 확인하세요."
+        : "배포: Cloudflare Pages → Settings → Environment variables 에 NAVER_CLIENT_ID, NAVER_CLIENT_SECRET 을 넣고 재배포하세요. /api/nearby 가 JSON 으로 응답하는지도 확인하세요.";
     const detail = `목록이 비었습니다.\n\n${hint}`;
     showRankingPlaceholder(detail, true);
     return;
@@ -285,22 +289,40 @@ async function loadRankingFromNaver() {
 
   try {
     const res = await fetch(`/api/nearby?${params.toString()}`);
-    const data = await res.json().catch(() => ({}));
+    const raw = await res.text();
+    let data;
+    try {
+      data = raw ? JSON.parse(raw) : {};
+    } catch {
+      const isLocal =
+        location.hostname === "localhost" || location.hostname === "127.0.0.1";
+      throw new Error(
+        isLocal
+          ? "API 응답이 JSON이 아닙니다. 터미널에서 node server.mjs 를 실행했는지 확인하세요."
+          : "API(/api/nearby)가 동작하지 않습니다. Cloudflare Pages Functions 배포와 환경 변수(NAVER_CLIENT_ID, NAVER_CLIENT_SECRET)를 확인하세요."
+      );
+    }
 
     if (res.status === 400) {
       throw new Error(data.message || "검색할 지역을 입력해 주세요.");
     }
     if (!res.ok) {
-      throw new Error(data.error || `HTTP ${res.status}`);
+      throw new Error(data.localSearchError || data.error || `HTTP ${res.status}`);
     }
-    if (data.error) throw new Error(data.error);
+    if (data.error && !data.items?.length) {
+      throw new Error(data.localSearchError || data.error);
+    }
 
     renderNaverRanking(data);
     setLocationMessage("", false);
   } catch (e) {
+    const isLocal =
+      location.hostname === "localhost" || location.hostname === "127.0.0.1";
     const msg =
       e instanceof TypeError && String(e).includes("fetch")
-        ? "서버에 연결할 수 없습니다. node server.mjs 실행 후 http://localhost:8787 을 여세요."
+        ? isLocal
+          ? "서버에 연결할 수 없습니다. node server.mjs 실행 후 http://localhost:8787 을 여세요."
+          : "서버(API)에 연결할 수 없습니다. Cloudflare 배포 상태를 확인하세요."
         : String(e?.message || e);
     setLocationMessage(msg, true);
     showRankingPlaceholder(msg, true);

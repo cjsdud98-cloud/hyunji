@@ -6,7 +6,7 @@ import http from "node:http";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { readNaverConfig, handleNearby } from "./lib/nearby-api.mjs";
+import { readNaverConfig, handleNearby } from "./functions/_shared/nearby-api.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT) || 8787;
