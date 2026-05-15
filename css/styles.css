@@ -624,6 +624,154 @@ body {
   color: var(--ink-soft);
 }
 
+/* ─── 서비스 소개 · FAQ ─── */
+.info-panel .panel-title {
+  margin-bottom: 0.65rem;
+}
+
+.info-lead {
+  margin: 0 0 1.25rem;
+  font-size: 0.92rem;
+  color: var(--ink-soft);
+  line-height: 1.65;
+}
+
+.info-lead strong {
+  color: var(--ink);
+}
+
+.info-subtitle {
+  margin: 1.5rem 0 0.75rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+
+.feature-grid {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 640px) {
+  .feature-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.feature-card {
+  padding: 1rem 1.05rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--line);
+  background: var(--surface-solid);
+  box-shadow: var(--shadow-sm);
+}
+
+.feature-icon {
+  display: block;
+  font-size: 1.5rem;
+  margin-bottom: 0.35rem;
+}
+
+.feature-title {
+  margin: 0 0 0.35rem;
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.feature-text {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.steps-list {
+  margin: 0 0 1rem;
+  padding-left: 1.2rem;
+  font-size: 0.88rem;
+  color: var(--ink-soft);
+}
+
+.steps-list li + li {
+  margin-top: 0.45rem;
+}
+
+.info-note {
+  margin: 0;
+  padding: 0.85rem 1rem;
+  font-size: 0.8rem;
+  color: var(--muted);
+  background: var(--blue-soft);
+  border-radius: var(--radius-md);
+  line-height: 1.55;
+}
+
+.faq-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.faq-item {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface-solid);
+  overflow: hidden;
+}
+
+.faq-item[open] {
+  border-color: rgba(49, 130, 246, 0.35);
+  box-shadow: var(--shadow-sm);
+}
+
+.faq-question {
+  padding: 0.9rem 1rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--ink);
+  cursor: pointer;
+  list-style: none;
+}
+
+.faq-question::-webkit-details-marker {
+  display: none;
+}
+
+.faq-question::after {
+  content: "+";
+  float: right;
+  font-weight: 700;
+  color: var(--blue);
+}
+
+.faq-item[open] .faq-question::after {
+  content: "−";
+}
+
+.faq-answer {
+  margin: 0;
+  padding: 0 1rem 1rem;
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+  line-height: 1.6;
+}
+
+.faq-answer code {
+  font-size: 0.78rem;
+  padding: 0.1rem 0.35rem;
+  border-radius: 4px;
+  background: #f2f4f6;
+  color: var(--ink);
+}
+
+#about,
+#faq {
+  scroll-margin-top: calc(var(--nav-h) + 1rem);
+}
+
 .site-footer {
   position: relative;
   z-index: 2;
