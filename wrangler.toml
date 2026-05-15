@@ -1,8 +1,5 @@
-# Cloudflare Pages (Git 연결 시 이 파일 기준으로 빌드)
+# Cloudflare Pages — [build] 섹션은 Pages에서 지원하지 않음
+# 빌드 명령은 대시보드 Build settings에서 설정 (비우거나: npm run build)
 name = "hyunji"
 compatibility_date = "2024-11-01"
 pages_build_output_dir = "."
-
-[build]
-# 정적 사이트 — 별도 빌드 없음 (대시보드 Build command도 비워 두세요)
-command = "npm run build"
