@@ -1,0 +1,14 @@
+# Render: GitHub 저장소 연결 후 main 브랜치 push 시 자동 배포
+# https://dashboard.render.com → New → Blueprint → 이 저장소 선택
+services:
+  - type: web
+    name: hyunji
+    runtime: node
+    plan: free
+    buildCommand: echo "no build"
+    startCommand: npm start
+    envVars:
+      - key: NAVER_CLIENT_ID
+        sync: false
+      - key: NAVER_CLIENT_SECRET
+        sync: false

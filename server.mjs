@@ -20,6 +20,12 @@ const MIME = {
 };
 
 function readNaverConfig() {
+  const fromEnv = {
+    clientId: String(process.env.NAVER_CLIENT_ID || "").trim(),
+    clientSecret: String(process.env.NAVER_CLIENT_SECRET || "").trim(),
+  };
+  if (fromEnv.clientId && fromEnv.clientSecret) return fromEnv;
+
   try {
     const p = path.join(__dirname, "naver-config.json");
     const raw = fs.readFileSync(p, "utf8");
@@ -205,7 +211,7 @@ async function handleNearby(url) {
       distanceBasis: "default_center",
       origin: { lat: 37.497952, lng: 127.027619 },
       localSearchError:
-        "naver-config.json에 네이버 Client ID·Client Secret이 비어 있습니다. 개발자센터에서 발급한 값을 넣고, 터미널에서 서버(node server.mjs)를 한 번 재시작해 주세요.",
+        "네이버 API 키가 설정되지 않았습니다. 로컬은 naver-config.json, 배포 환경은 NAVER_CLIENT_ID·NAVER_CLIENT_SECRET 환경 변수를 설정한 뒤 서버를 재시작해 주세요.",
       items: [],
       setupRequired: true,
     };
