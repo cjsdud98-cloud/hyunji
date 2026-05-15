@@ -117,6 +117,8 @@ body {
 }
 
 .hero-title {
+  position: relative;
+  z-index: 2;
   margin: 0;
   font-weight: 800;
   font-size: clamp(1.85rem, 5.5vw, 3rem);
@@ -130,6 +132,8 @@ body {
 }
 
 .hero-cta {
+  position: relative;
+  z-index: 3;
   margin-top: 2rem;
   display: flex;
   flex-direction: column;
@@ -219,10 +223,11 @@ body {
 .hero-scene {
   position: absolute;
   left: 50%;
-  bottom: 0;
+  bottom: -0.5rem;
+  z-index: 0;
   transform: translateX(-50%);
   width: min(100%, 900px);
-  height: clamp(140px, 22vw, 220px);
+  height: clamp(100px, 16vw, 160px);
   pointer-events: none;
   perspective: 800px;
 }
@@ -241,7 +246,7 @@ body {
   width: 88px;
   height: 88px;
   left: 8%;
-  bottom: 18%;
+  bottom: 8%;
   transform: rotate(-12deg) rotateX(8deg);
   animation: bob-a 7s ease-in-out infinite;
 }
@@ -250,7 +255,7 @@ body {
   width: 120px;
   height: 72px;
   left: 22%;
-  bottom: 6%;
+  bottom: 0;
   transform: rotate(6deg) rotateX(12deg);
   animation: bob-b 8s ease-in-out infinite;
 }
@@ -259,7 +264,7 @@ body {
   width: 100px;
   height: 100px;
   right: 18%;
-  bottom: 12%;
+  bottom: 4%;
   border-radius: 50%;
   transform: rotate(18deg) rotateX(10deg);
   animation: bob-c 6.5s ease-in-out infinite;
@@ -269,7 +274,7 @@ body {
   width: 72px;
   height: 96px;
   right: 6%;
-  bottom: 22%;
+  bottom: 10%;
   transform: rotate(-8deg) rotateX(6deg);
   animation: bob-d 7.5s ease-in-out infinite;
 }
@@ -283,21 +288,21 @@ body {
 
 .float-icon--pin {
   left: 42%;
-  bottom: 4%;
+  bottom: 0;
   transform: translateX(-50%) rotate(-6deg);
   animation: bob-pin 5s ease-in-out infinite;
 }
 
 .float-icon--bowl {
   left: 52%;
-  bottom: 28%;
+  bottom: 12%;
   transform: rotate(8deg);
   animation: bob-bowl 6s ease-in-out infinite;
 }
 
 .float-icon--map {
   left: 34%;
-  bottom: 32%;
+  bottom: 14%;
   transform: rotate(-10deg);
   opacity: 0.9;
   animation: bob-map 7s ease-in-out infinite;
