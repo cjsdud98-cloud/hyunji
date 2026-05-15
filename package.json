@@ -6,9 +6,12 @@
   "scripts": {
     "start": "node server.mjs",
     "build": "node --check server.mjs && node --check lib/nearby-api.mjs",
-    "pages:dev": "npx wrangler pages dev ."
+    "pages:dev": "wrangler pages dev ."
   },
   "engines": {
     "node": ">=18"
+  },
+  "devDependencies": {
+    "wrangler": "^3.114.0"
   }
 }

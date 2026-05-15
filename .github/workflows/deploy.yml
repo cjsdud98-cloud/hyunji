@@ -20,8 +20,12 @@ jobs:
     needs: verify
     runs-on: ubuntu-latest
     steps:
-      - name: Trigger Render deploy
-        if: ${{ secrets.RENDER_DEPLOY_HOOK != '' }}
+      - name: Trigger Render deploy (선택)
         env:
           RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
-        run: curl -fsS -X POST "$RENDER_DEPLOY_HOOK"
+        run: |
+          if [ -n "$RENDER_DEPLOY_HOOK" ]; then
+            curl -fsS -X POST "$RENDER_DEPLOY_HOOK"
+          else
+            echo "RENDER_DEPLOY_HOOK 없음 — 건너뜀"
+          fi
