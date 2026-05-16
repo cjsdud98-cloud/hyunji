@@ -71,8 +71,8 @@ function showRankingPlaceholder(message, isError = false) {
 }
 
 function distanceBasisLabel(basis) {
-  if (basis === "gps_radius") return `내 위치 · ${GPS_RADIUS_KM}km 이내`;
-  if (basis === "gps") return "내 위치 기준";
+  if (basis === "gps_radius") return `내 위치 · ${GPS_RADIUS_KM}km 이내 노포`;
+  if (basis === "gps") return "내 위치 기준 노포";
   if (basis === "region_geocode") return "검색 지역 중심";
   return "기본 좌표 기준";
 }
@@ -322,6 +322,8 @@ async function runNearbySearch(params) {
     renderNaverRanking(data);
     const parts = [];
     if (data.regionLabel) parts.push(data.regionLabel);
+    const n = data.items?.length ?? 0;
+    if (n > 0) parts.push(`노포 ${n}곳`);
     if (data.accuracyNote) parts.push(data.accuracyNote);
     setLocationMessage(parts.length ? parts.join(" · ") : "검색 완료", false);
   } catch (e) {

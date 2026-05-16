@@ -141,6 +141,62 @@ async function naverReverseGeocode(cfg, lat, lng) {
   return { searchBase, label, queryBases: uniqueBases };
 }
 
+/** 행정동 표기 정리 (역삼1동 → 역삼동) */
+function normalizeDongName(name) {
+  return String(name || "")
+    .replace(/(\D+)\d+동$/, "$1동")
+    .trim();
+}
+
+/**
+ * 네이버 역지오코딩 실패 시 OSM으로 동·구 추출 (Maps API 키 없을 때 GPS 검색용)
+ */
+async function osmReverseGeocode(lat, lng) {
+  const u = new URL("https://nominatim.openstreetmap.org/reverse");
+  u.searchParams.set("lat", String(lat));
+  u.searchParams.set("lon", String(lng));
+  u.searchParams.set("format", "json");
+  u.searchParams.set("accept-language", "ko");
+  u.searchParams.set("addressdetails", "1");
+
+  const res = await fetch(u.toString(), {
+    headers: { "User-Agent": "hyunjin-matjip/1.0 (contact: local-dev)" },
+  });
+  if (!res.ok) return null;
+  const j = await res.json();
+  const addr = j.address;
+  if (!addr) return null;
+
+  const city = addr.city || addr.state || "";
+  const borough = addr.borough || addr.county || addr.city_district || "";
+  const suburb = normalizeDongName(addr.suburb || addr.neighbourhood || addr.quarter || "");
+  const town = normalizeDongName(addr.town || addr.village || "");
+
+  /** @type {string[]} */
+  const queryBases = [];
+  if (borough && suburb) queryBases.push(`${borough} ${suburb}`);
+  if (suburb) queryBases.push(suburb);
+  if (city && borough) queryBases.push(`${city} ${borough}`);
+  if (borough) queryBases.push(borough);
+  if (town && town !== suburb) queryBases.push(town);
+
+  const uniqueBases = [...new Set(queryBases.filter(Boolean))];
+  const searchBase = uniqueBases[0];
+  if (!searchBase) return null;
+
+  const label = [suburb, borough, city].filter(Boolean).join(", ") || searchBase;
+  return { searchBase, label, queryBases: uniqueBases };
+}
+
+/** GPS 좌표 → 검색 지역 (네이버 Maps 우선, 실패 시 OSM) */
+async function resolveGpsSearchRegion(cfg, lat, lng) {
+  const naver = await naverReverseGeocode(cfg, lat, lng);
+  if (naver?.searchBase) return { ...naver, source: "naver" };
+  const osm = await osmReverseGeocode(lat, lng);
+  if (osm?.searchBase) return { ...osm, source: "osm" };
+  return null;
+}
+
 /** 네이버 지역 검색에서 「{지역} 노포」와 동일한 키워드 */
 function buildSearchQueriesFromBases(bases) {
   return [...new Set(bases.map((base) => `${base.trim()} 노포`).filter((q) => q.length > 2))];
@@ -203,7 +259,16 @@ async function collectPlaces(cfg, queries, origin, { display = 5, maxRadiusKm = 
 
   let filtered = list;
   if (maxRadiusKm != null && Number.isFinite(maxRadiusKm)) {
-    filtered = list.filter((p) => p.distanceKm != null && p.distanceKm <= maxRadiusKm);
+    const within = list.filter((p) => p.distanceKm != null && p.distanceKm <= maxRadiusKm);
+    if (within.length > 0) {
+      filtered = within;
+    } else {
+      // 반경 내 없으면 GPS에서 가장 가까운 노포 후보를 표시
+      filtered = list
+        .filter((p) => p.distanceKm != null)
+        .sort((a, b) => a.distanceKm - b.distanceKm)
+        .slice(0, 10);
+    }
   }
 
   filtered.sort((a, b) => {
@@ -211,6 +276,11 @@ async function collectPlaces(cfg, queries, origin, { display = 5, maxRadiusKm = 
     const db = b.distanceKm ?? 1e9;
     return da - db;
   });
+
+  const maxResults = 20;
+  if (filtered.length > maxResults) {
+    filtered = filtered.slice(0, maxResults);
+  }
 
   const lastApiError =
     filtered.length === 0
@@ -279,8 +349,8 @@ export async function handleNearby(url, cfg) {
   }
 
   let searchQueries = null;
-  if (!region && useRadius) {
-    const rev = await naverReverseGeocode(cfg, qlat, qlng);
+  if (gpsSearch && hasGps && !region.trim()) {
+    const rev = await resolveGpsSearchRegion(cfg, qlat, qlng);
     if (rev?.searchBase) {
       region = rev.searchBase;
       regionLabel = `내 위치 주변 · ${rev.label} (${radiusKm}km)`;
@@ -288,14 +358,36 @@ export async function handleNearby(url, cfg) {
         ? buildSearchQueriesFromBases(rev.queryBases)
         : null;
     } else {
-      region = "노포";
-      regionLabel = `내 위치 주변 · 노포 (${radiusKm}km)`;
+      regionLabel = `내 위치 주변 (${radiusKm}km)`;
+      searchQueries = [];
     }
   } else if (useRadius && region) {
     regionLabel = `${region} · 내 위치 ${radiusKm}km 이내`;
   }
 
-  const queries = searchQueries || buildSearchQueries(region);
+  const queries =
+    searchQueries != null && searchQueries.length > 0
+      ? searchQueries
+      : region.trim()
+        ? buildSearchQueries(region)
+        : [];
+
+  if (queries.length === 0) {
+    return {
+      regionLabel: regionLabel || "내 위치",
+      distanceBasis,
+      origin,
+      radiusKm: useRadius ? radiusKm : null,
+      accuracyM: Number.isFinite(Number(url.searchParams.get("accuracyM")))
+        ? Number(url.searchParams.get("accuracyM"))
+        : null,
+      accuracyNote: null,
+      localSearchError:
+        "주변 지역을 파악하지 못했습니다. 동·역 이름을 입력한 뒤 검색해 보세요.",
+      items: [],
+    };
+  }
+
   const { list: places, lastApiError } = await collectPlaces(cfg, queries, origin, {
     display: 10,
     maxRadiusKm: useRadius ? radiusKm : null,
