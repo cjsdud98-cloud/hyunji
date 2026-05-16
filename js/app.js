@@ -379,78 +379,118 @@ async function loadNearbyFromGps() {
   await runNearbySearch(params);
 }
 
-/** GPS 고정밀 수집 (여러 번 측정 후 가장 정확한 좌표 선택) */
-function acquireAccuratePosition() {
+/**
+ * GPS 좌표 수집 (빠른 시도 → 고정밀 순, 실내·PC에서도 잡기 쉽게)
+ * @param {{ fast?: boolean }} [options]
+ */
+function acquireAccuratePosition({ fast = false } = {}) {
   return new Promise((resolve, reject) => {
     if (!navigator.geolocation) {
-      reject(new Error("NO_GEO"));
+      reject(Object.assign(new Error("NO_GEO"), { code: 0 }));
       return;
     }
 
-    const geoOpts = {
-      enableHighAccuracy: true,
-      maximumAge: 0,
-      timeout: 25000,
-    };
+    const tryGet = (opts) =>
+      new Promise((res, rej) => {
+        navigator.geolocation.getCurrentPosition(res, rej, opts);
+      });
 
-    let best = /** @type {GeolocationPosition | null} */ (null);
-    let watchId = /** @type {number | null} */ (null);
+    const attempts = fast
+      ? [
+          { enableHighAccuracy: false, maximumAge: 300000, timeout: 10000 },
+          { enableHighAccuracy: true, maximumAge: 120000, timeout: 18000 },
+        ]
+      : [
+          { enableHighAccuracy: true, maximumAge: 120000, timeout: 15000 },
+          { enableHighAccuracy: false, maximumAge: 300000, timeout: 12000 },
+        ];
 
-    const finish = (pos) => {
-      if (watchId != null) navigator.geolocation.clearWatch(watchId);
-      resolve(pos);
-    };
-
-    const fail = (err) => {
-      if (watchId != null) navigator.geolocation.clearWatch(watchId);
-      if (best) finish(best);
-      else reject(err);
-    };
-
-    const onReading = (pos) => {
-      const acc = pos.coords.accuracy ?? 99999;
-      if (!best || acc < (best.coords.accuracy ?? 99999)) {
-        best = pos;
+    (async () => {
+      let lastErr = /** @type {GeolocationPositionError | null} */ (null);
+      for (const opts of attempts) {
+        try {
+          const pos = await tryGet(opts);
+          resolve(pos);
+          return;
+        } catch (e) {
+          lastErr = /** @type {GeolocationPositionError} */ (e);
+          if (lastErr?.code === 1) {
+            reject(lastErr);
+            return;
+          }
+        }
       }
-      setLocationMessage(
-        `GPS 수신 중… (오차 약 ${Math.round(acc)}m${acc <= 50 ? ", 좋음" : ""})`
-      );
-      if (acc <= 35) finish(pos);
-    };
-
-    watchId = navigator.geolocation.watchPosition(onReading, fail, geoOpts);
-
-    setTimeout(() => {
-      if (best) finish(best);
-      else {
-        navigator.geolocation.getCurrentPosition(finish, fail, geoOpts);
-      }
-    }, 12000);
+      reject(lastErr || Object.assign(new Error("GPS_TIMEOUT"), { code: 3 }));
+    })();
   });
+}
+
+function geolocationErrorMessage(err) {
+  const code = err?.code;
+  if (code === 1) {
+    return "위치 권한이 꺼져 있습니다. 주소창 자물쇠 → 「위치」 허용 후 아래 버튼을 눌러 주세요.";
+  }
+  if (code === 2) {
+    return "위치를 일시적으로 확인할 수 없습니다. Wi‑Fi·GPS를 켠 뒤 다시 시도해 주세요.";
+  }
+  if (code === 3) {
+    return "위치 확인 시간이 초과되었습니다. 실외·창가에서 다시 시도해 주세요.";
+  }
+  return "GPS를 가져오지 못했습니다. 「내 위치」를 누르거나 동·역 이름을 입력해 주세요.";
+}
+
+/** 위치 권한 요청 UI (많은 브라우저는 버튼 클릭 후에만 GPS 허용) */
+function showLocationEnablePrompt(message) {
+  elRankCount.textContent = "0곳";
+  elRankList.innerHTML = "";
+
+  const box = document.createElement("div");
+  box.className = "location-prompt";
+
+  const p = document.createElement("p");
+  p.className = "empty-state";
+  p.textContent = message;
+
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "btn-hero btn-hero--dark";
+  btn.textContent = "📍 위치 허용하고 주변 노포 보기";
+  btn.addEventListener("click", () => requestLocation({ userGesture: true }));
+
+  box.append(p, btn);
+  elRankList.appendChild(box);
 }
 
 /**
  * GPS로 내 위치를 잡고 주변 노포 목록을 불러옵니다.
- * @param {{ autoStart?: boolean }} [options] autoStart: 첫 접속 시 자동 실행
+ * @param {{ autoStart?: boolean, userGesture?: boolean, fast?: boolean }} [options]
  */
-function requestLocation({ autoStart = false } = {}) {
+function requestLocation({ autoStart = false, userGesture = false, fast = false } = {}) {
+  const useFast = fast || autoStart;
+
+  if (!window.isSecureContext) {
+    const msg =
+      "위치 기능은 https(보안 연결)에서만 동작합니다. 주소가 https:// 로 시작하는지 확인하거나, 동·역 이름을 입력해 검색해 주세요.";
+    setLocationMessage(msg, true);
+    showLocationEnablePrompt(msg);
+    return;
+  }
+
   if (autoStart) {
     showSearchLoading("위치 확인 중… 내 주변 노포를 찾고 있습니다");
   } else {
-    setLocationMessage("정확한 GPS 위치를 잡는 중… (실외·휴대폰이 더 정확합니다)");
+    setLocationMessage("GPS 위치를 확인하는 중…");
   }
 
   if (!navigator.geolocation) {
     userPos = null;
     const msg = "이 브라우저는 위치를 지원하지 않습니다. 지역명을 입력해 검색해 주세요.";
     setLocationMessage(msg, true);
-    if (autoStart) {
-      showRankingPlaceholder(msg);
-    }
+    showLocationEnablePrompt(msg);
     return;
   }
 
-  acquireAccuratePosition()
+  acquireAccuratePosition({ fast: useFast })
     .then((pos) => {
       const acc = pos.coords.accuracy ?? null;
       userPos = {
@@ -464,19 +504,35 @@ function requestLocation({ autoStart = false } = {}) {
     })
     .catch((err) => {
       userPos = null;
-      let msg;
-      if (err?.code === 1 || err?.message === "NO_GEO") {
-        msg =
-          "위치 권한이 없습니다. 주소창 자물쇠 → 위치 허용 후 「내 위치」를 누르거나, 동·역 이름을 입력해 검색해 주세요.";
-      } else {
-        msg =
-          "GPS를 가져오지 못했습니다. 「내 위치」를 다시 누르거나 지역명을 직접 입력해 주세요.";
-      }
+      const msg = geolocationErrorMessage(err);
       setLocationMessage(msg, true);
-      if (autoStart) {
-        showRankingPlaceholder(msg);
-      }
+      showLocationEnablePrompt(msg);
     });
+}
+
+/** 첫 접속: 권한이 이미 있으면 자동, 아니면 버튼으로 요청 */
+async function initLocationOnLoad() {
+  if (!window.isSecureContext) {
+    requestLocation({ autoStart: true });
+    return;
+  }
+
+  try {
+    if (navigator.permissions?.query) {
+      const status = await navigator.permissions.query({ name: "geolocation" });
+      if (status.state === "denied") {
+        showLocationEnablePrompt(
+          "위치가 차단되어 있습니다. 주소창 자물쇠 → 「위치」 허용 후 아래 버튼을 눌러 주세요."
+        );
+        setLocationMessage("위치 권한이 필요합니다.", true);
+        return;
+      }
+    }
+  } catch {
+    /* Permissions API 미지원 브라우저 */
+  }
+
+  requestLocation({ autoStart: true, fast: true });
 }
 
 elPlaceBody?.addEventListener("input", () => {
@@ -517,11 +573,10 @@ document.addEventListener("keydown", (e) => {
   }
 });
 
-btnRefresh.addEventListener("click", () => requestLocation());
+btnRefresh.addEventListener("click", () => requestLocation({ userGesture: true }));
 elRegionForm?.addEventListener("submit", (e) => {
   e.preventDefault();
   loadRankingFromNaver();
 });
 
-/** 첫 접속 시 GPS → 역지오코딩 지역 + 노포 검색 */
-requestLocation({ autoStart: true });
+initLocationOnLoad();

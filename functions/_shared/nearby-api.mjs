@@ -188,12 +188,46 @@ async function osmReverseGeocode(lat, lng) {
   return { searchBase, label, queryBases: uniqueBases };
 }
 
-/** GPS 좌표 → 검색 지역 (네이버 Maps 우선, 실패 시 OSM) */
+/** Cloudflare 등에서 OSM이 막힐 때 사용 (API 키 불필요) */
+async function bigDataCloudReverseGeocode(lat, lng) {
+  const u = new URL("https://api.bigdatacloud.net/data/reverse-geocode-client");
+  u.searchParams.set("latitude", String(lat));
+  u.searchParams.set("longitude", String(lng));
+  u.searchParams.set("localityLanguage", "ko");
+
+  const res = await fetch(u.toString());
+  if (!res.ok) return null;
+  const j = await res.json();
+  const admins = j.localityInfo?.administrative || [];
+  const nameAt = (order) => admins.find((a) => a.order === order)?.name || "";
+
+  const city = j.city || nameAt(6) || nameAt(5) || "";
+  const borough = nameAt(8) || j.localityInfo?.informative?.find((a) => a.description?.includes("자치구"))?.name || "";
+  const suburb = normalizeDongName(j.locality || nameAt(10) || nameAt(9) || "");
+
+  /** @type {string[]} */
+  const queryBases = [];
+  if (borough && suburb) queryBases.push(`${borough} ${suburb}`);
+  if (suburb) queryBases.push(suburb);
+  if (city && borough) queryBases.push(`${city} ${borough}`);
+  if (borough) queryBases.push(borough);
+
+  const uniqueBases = [...new Set(queryBases.filter(Boolean))];
+  const searchBase = uniqueBases[0];
+  if (!searchBase) return null;
+
+  const label = [suburb, borough, city].filter(Boolean).join(", ") || searchBase;
+  return { searchBase, label, queryBases: uniqueBases };
+}
+
+/** GPS 좌표 → 검색 지역 (네이버 Maps → OSM → BigDataCloud) */
 async function resolveGpsSearchRegion(cfg, lat, lng) {
   const naver = await naverReverseGeocode(cfg, lat, lng);
   if (naver?.searchBase) return { ...naver, source: "naver" };
   const osm = await osmReverseGeocode(lat, lng);
   if (osm?.searchBase) return { ...osm, source: "osm" };
+  const bdc = await bigDataCloudReverseGeocode(lat, lng);
+  if (bdc?.searchBase) return { ...bdc, source: "bdc" };
   return null;
 }
 
