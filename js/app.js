@@ -303,8 +303,8 @@ function showSearchLoading(message = "네이버 지역 검색 중…") {
 async function runNearbySearch(params) {
   showSearchLoading(
     params.get("gpsSearch") === "1"
-      ? `내 주변 ${GPS_RADIUS_KM}km 이내 맛집 검색 중…`
-      : "네이버 지역 검색 중…"
+      ? `내 주변 ${GPS_RADIUS_KM}km 이내 노포 검색 중…`
+      : "네이버에서 지역 노포 검색 중…"
   );
 
   try {
@@ -444,7 +444,7 @@ function requestLocation() {
         accuracyM: acc ?? undefined,
       };
       const accText = acc != null ? ` (오차 약 ${Math.round(acc)}m)` : "";
-      setLocationMessage(`위치 확인${accText}. 주변 ${GPS_RADIUS_KM}km 맛집 검색 중…`);
+      setLocationMessage(`위치 확인${accText}. 주변 ${GPS_RADIUS_KM}km 노포 검색 중…`);
       loadNearbyFromGps();
     })
     .catch((err) => {
@@ -508,5 +508,5 @@ elRegionForm?.addEventListener("submit", (e) => {
 });
 
 showRankingPlaceholder(
-  "지역을 입력하고 「맛집 검색」을 누르거나, 「내 위치」를 눌러 주변 20km 이내 맛집을 찾아 보세요."
+  "지역을 입력하고 「맛집 검색」을 누르면 네이버 「지역 + 노포」 결과를 보여 줍니다. 「내 위치」는 주변 20km 이내 노포입니다."
 );

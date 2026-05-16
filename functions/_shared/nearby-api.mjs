@@ -141,21 +141,14 @@ async function naverReverseGeocode(cfg, lat, lng) {
   return { searchBase, label, queryBases: uniqueBases };
 }
 
+/** 네이버 지역 검색에서 「{지역} 노포」와 동일한 키워드 */
 function buildSearchQueriesFromBases(bases) {
-  const tails = ["맛집", "한식", "카페", "고기", "술집"];
-  const queries = [];
-  for (const base of bases) {
-    for (const t of tails) {
-      queries.push(`${base} ${t}`);
-    }
-  }
-  return [...new Set(queries)];
+  return [...new Set(bases.map((base) => `${base.trim()} 노포`).filter((q) => q.length > 2))];
 }
 
 function buildSearchQueries(region) {
   const base = region.trim();
-  const tails = ["맛집", "한식", "카페", "고기", "술집"];
-  return tails.map((t) => `${base} ${t}`);
+  return base ? [`${base} 노포`] : [];
 }
 
 async function collectPlaces(cfg, queries, origin, { display = 5, maxRadiusKm = null } = {}) {
@@ -222,7 +215,7 @@ async function collectPlaces(cfg, queries, origin, { display = 5, maxRadiusKm = 
   const lastApiError =
     filtered.length === 0
       ? maxRadiusKm != null
-        ? lastHttpError || `${maxRadiusKm}km 이내 맛집을 찾지 못했습니다.`
+        ? lastHttpError || `${maxRadiusKm}km 이내 노포를 찾지 못했습니다.`
         : lastHttpError
       : null;
 
@@ -295,8 +288,8 @@ export async function handleNearby(url, cfg) {
         ? buildSearchQueriesFromBases(rev.queryBases)
         : null;
     } else {
-      region = "맛집";
-      regionLabel = `내 위치 주변 (${radiusKm}km)`;
+      region = "노포";
+      regionLabel = `내 위치 주변 · 노포 (${radiusKm}km)`;
     }
   } else if (useRadius && region) {
     regionLabel = `${region} · 내 위치 ${radiusKm}km 이내`;
@@ -304,12 +297,12 @@ export async function handleNearby(url, cfg) {
 
   const queries = searchQueries || buildSearchQueries(region);
   const { list: places, lastApiError } = await collectPlaces(cfg, queries, origin, {
-    display: useRadius ? 10 : 5,
+    display: 10,
     maxRadiusKm: useRadius ? radiusKm : null,
   });
 
   const emptyFallback = useRadius
-    ? `${radiusKm}km 이내에서 맛집을 찾지 못했습니다. 다른 동네를 입력해 검색해 보세요.`
+    ? `${radiusKm}km 이내에서 노포를 찾지 못했습니다. 다른 동네를 입력해 검색해 보세요.`
     : "네이버에서 업체를 받지 못했습니다. 개발자센터에서 「검색」→「지역 검색」을 켠 Client ID·Secret이 맞는지 확인하세요.";
 
   const accuracyM = Number(url.searchParams.get("accuracyM"));
