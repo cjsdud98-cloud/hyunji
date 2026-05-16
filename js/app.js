@@ -427,11 +427,24 @@ function acquireAccuratePosition() {
   });
 }
 
-function requestLocation() {
-  setLocationMessage("정확한 GPS 위치를 잡는 중… (실외·휴대폰이 더 정확합니다)");
+/**
+ * GPS로 내 위치를 잡고 주변 노포 목록을 불러옵니다.
+ * @param {{ autoStart?: boolean }} [options] autoStart: 첫 접속 시 자동 실행
+ */
+function requestLocation({ autoStart = false } = {}) {
+  if (autoStart) {
+    showSearchLoading("위치 확인 중… 내 주변 노포를 찾고 있습니다");
+  } else {
+    setLocationMessage("정확한 GPS 위치를 잡는 중… (실외·휴대폰이 더 정확합니다)");
+  }
+
   if (!navigator.geolocation) {
     userPos = null;
-    setLocationMessage("이 브라우저는 위치를 지원하지 않습니다. 지역명 검색만 사용할 수 있어요.", true);
+    const msg = "이 브라우저는 위치를 지원하지 않습니다. 지역명을 입력해 검색해 주세요.";
+    setLocationMessage(msg, true);
+    if (autoStart) {
+      showRankingPlaceholder(msg);
+    }
     return;
   }
 
@@ -449,16 +462,17 @@ function requestLocation() {
     })
     .catch((err) => {
       userPos = null;
+      let msg;
       if (err?.code === 1 || err?.message === "NO_GEO") {
-        setLocationMessage(
-          "위치 권한이 없습니다. 주소창 자물쇠 → 위치 허용, 또는 휴대폰에서 https로 접속해 주세요.",
-          true
-        );
+        msg =
+          "위치 권한이 없습니다. 주소창 자물쇠 → 위치 허용 후 「내 위치」를 누르거나, 동·역 이름을 입력해 검색해 주세요.";
       } else {
-        setLocationMessage(
-          "GPS를 가져오지 못했습니다. 잠시 후 다시 시도하거나 지역명을 직접 입력해 주세요.",
-          true
-        );
+        msg =
+          "GPS를 가져오지 못했습니다. 「내 위치」를 다시 누르거나 지역명을 직접 입력해 주세요.";
+      }
+      setLocationMessage(msg, true);
+      if (autoStart) {
+        showRankingPlaceholder(msg);
       }
     });
 }
@@ -501,12 +515,11 @@ document.addEventListener("keydown", (e) => {
   }
 });
 
-btnRefresh.addEventListener("click", requestLocation);
+btnRefresh.addEventListener("click", () => requestLocation());
 elRegionForm?.addEventListener("submit", (e) => {
   e.preventDefault();
   loadRankingFromNaver();
 });
 
-showRankingPlaceholder(
-  "지역을 입력하고 「맛집 검색」을 누르면 네이버 「지역 + 노포」 결과를 보여 줍니다. 「내 위치」는 주변 20km 이내 노포입니다."
-);
+/** 첫 접속 시 GPS → 역지오코딩 지역 + 노포 검색 */
+requestLocation({ autoStart: true });
